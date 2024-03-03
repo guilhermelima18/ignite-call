@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ArrowRight } from "phosphor-react";
 import { getWeekDays } from "@/utils/get-week-days";
+import { convertTimeStringToMinutes } from "@/utils/convert-time-string-to-minutes";
 import { Container, Header } from "../styles";
 import {
   IntervalBox,
@@ -21,6 +22,7 @@ import {
   IntervalsContainer,
   FormError,
 } from "./styles";
+import { api } from "@/libs/axios";
 
 const timeIntervalsFormSchema = z.object({
   intervals: z
@@ -38,10 +40,33 @@ const timeIntervalsFormSchema = z.object({
     )
     .refine((intervals) => intervals.length > 0, {
       message: "Você precisa selecionar pelo menos um dia da semana!",
-    }),
+    })
+    .transform((intervals) => {
+      return intervals.map((interval) => {
+        return {
+          weekDay: interval.weekDay,
+          startTimeInMinutes: convertTimeStringToMinutes(interval.startTime),
+          endTimeInMinutes: convertTimeStringToMinutes(interval.endTime),
+        };
+      });
+    })
+    .refine(
+      (intervals) => {
+        return intervals.every(
+          (interval) =>
+            interval.endTimeInMinutes - 60 >= interval.startTimeInMinutes
+        );
+      },
+      {
+        message:
+          "O horário de término deve ser pelo menos 1h distante do início.",
+      }
+    ),
 });
 
-type TimeIntervalsFormData = z.infer<typeof timeIntervalsFormSchema>;
+type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>;
+
+type TimeIntervalsFormOutput = z.output<typeof timeIntervalsFormSchema>;
 
 export default function TimeIntervals() {
   const {
@@ -50,7 +75,7 @@ export default function TimeIntervals() {
     watch,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<TimeIntervalsFormData>({
+  } = useForm<TimeIntervalsFormInput>({
     resolver: zodResolver(timeIntervalsFormSchema),
     defaultValues: {
       intervals: [
@@ -74,16 +99,18 @@ export default function TimeIntervals() {
 
   const intervals = watch("intervals");
 
-  async function handleSetTimeIntervals(data: TimeIntervalsFormData) {
-    console.log(data);
-  }
+  async function handleSetTimeIntervals(data: any) {
+    const { intervals } = data as TimeIntervalsFormOutput;
 
-  console.log(errors);
+    await api.post("/users/time-intervals", {
+      intervals,
+    });
+  }
 
   return (
     <Container>
       <Head>
-        <title>- Ignite Call</title>
+        <title>Selecione um horário- Ignite Call</title>
       </Head>
       <Header>
         <Heading as="strong">Quase lá</Heading>
