@@ -1,4 +1,5 @@
 import Head from "next/head";
+import { useRouter } from "next/router";
 import {
   Button,
   Checkbox,
@@ -69,6 +70,7 @@ type TimeIntervalsFormInput = z.input<typeof timeIntervalsFormSchema>;
 type TimeIntervalsFormOutput = z.output<typeof timeIntervalsFormSchema>;
 
 export default function TimeIntervals() {
+  const router = useRouter();
   const {
     control,
     register,
@@ -102,9 +104,15 @@ export default function TimeIntervals() {
   async function handleSetTimeIntervals(data: any) {
     const { intervals } = data as TimeIntervalsFormOutput;
 
-    await api.post("/users/time-intervals", {
-      intervals,
-    });
+    try {
+      await api.post("/users/time-intervals", {
+        intervals,
+      });
+
+      await router.push("/register/update-profile");
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   return (
